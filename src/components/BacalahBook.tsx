@@ -104,9 +104,9 @@ export const BacalahBook: React.FC<BacalahBookProps> = ({ onEarnStar }) => {
       setActiveLineIdx(currentIdx);
       idx++;
       speakIndonesian(linesToRead[currentIdx], {
-        rate: 0.84,
+        rate: 0.62,
         onEnd: () => {
-          window.setTimeout(readNextLine, 180);
+          window.setTimeout(readNextLine, 420);
         },
       });
     };

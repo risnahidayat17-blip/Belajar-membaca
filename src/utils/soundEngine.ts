@@ -112,7 +112,7 @@ export function playTapNote(index = 0): void {
   osc.frequency.setValueAtTime(freq, now);
 
   gain.gain.setValueAtTime(0.001, now);
-  gain.gain.exponentialRampToValueAtTime(0.18, now + 0.012);
+  gain.gain.exponentialRampToValueAtTime(0.16, now + 0.015);
   gain.gain.exponentialRampToValueAtTime(0.001, now + 0.24);
 
   osc.connect(gain);
@@ -131,16 +131,16 @@ export function playVowelChime(): void {
     const osc = ctx.createOscillator();
     const gain = ctx.createGain();
     osc.type = 'sine';
-    osc.frequency.setValueAtTime(freq, now + idx * 0.06);
+    osc.frequency.setValueAtTime(freq, now + idx * 0.07);
 
-    gain.gain.setValueAtTime(0.001, now + idx * 0.06);
-    gain.gain.exponentialRampToValueAtTime(0.14, now + idx * 0.06 + 0.02);
-    gain.gain.exponentialRampToValueAtTime(0.001, now + idx * 0.06 + 0.3);
+    gain.gain.setValueAtTime(0.001, now + idx * 0.07);
+    gain.gain.exponentialRampToValueAtTime(0.14, now + idx * 0.07 + 0.02);
+    gain.gain.exponentialRampToValueAtTime(0.001, now + idx * 0.07 + 0.3);
 
     osc.connect(gain);
     gain.connect(ctx.destination);
-    osc.start(now + idx * 0.06);
-    osc.stop(now + idx * 0.06 + 0.32);
+    osc.start(now + idx * 0.07);
+    osc.stop(now + idx * 0.07 + 0.32);
   });
 }
 
@@ -154,17 +154,17 @@ export function playBlendSound(): void {
   notes.forEach((freq, idx) => {
     const osc = ctx.createOscillator();
     const gain = ctx.createGain();
-    osc.type = 'triangle';
-    osc.frequency.setValueAtTime(freq, now + idx * 0.075);
+    osc.type = 'sine';
+    osc.frequency.setValueAtTime(freq, now + idx * 0.08);
 
-    gain.gain.setValueAtTime(0.001, now + idx * 0.075);
-    gain.gain.exponentialRampToValueAtTime(0.16, now + idx * 0.075 + 0.02);
-    gain.gain.exponentialRampToValueAtTime(0.001, now + idx * 0.075 + 0.25);
+    gain.gain.setValueAtTime(0.001, now + idx * 0.08);
+    gain.gain.exponentialRampToValueAtTime(0.15, now + idx * 0.08 + 0.02);
+    gain.gain.exponentialRampToValueAtTime(0.001, now + idx * 0.08 + 0.25);
 
     osc.connect(gain);
     gain.connect(ctx.destination);
-    osc.start(now + idx * 0.075);
-    osc.stop(now + idx * 0.075 + 0.26);
+    osc.start(now + idx * 0.08);
+    osc.stop(now + idx * 0.08 + 0.26);
   });
 }
 
@@ -176,14 +176,14 @@ export function playSuccessFanfare(): void {
   const now = ctx.currentTime;
   const notes = [523.25, 659.25, 783.99, 1046.5];
   notes.forEach((freq, idx) => {
-    const start = now + idx * 0.09;
+    const start = now + idx * 0.1;
     const osc = ctx.createOscillator();
     const gain = ctx.createGain();
-    osc.type = 'triangle';
+    osc.type = 'sine';
     osc.frequency.setValueAtTime(freq, start);
 
     gain.gain.setValueAtTime(0.001, start);
-    gain.gain.exponentialRampToValueAtTime(0.18, start + 0.02);
+    gain.gain.exponentialRampToValueAtTime(0.17, start + 0.02);
     gain.gain.exponentialRampToValueAtTime(0.001, start + 0.36);
 
     osc.connect(gain);
@@ -237,8 +237,8 @@ export function speakIndonesian(text: string, options: SpeakOptions = {}): void 
 
   const utterance = new SpeechSynthesisUtterance(text);
   utterance.lang = 'id-ID';
-  utterance.rate = options.rate ?? 0.94;
-  utterance.pitch = options.pitch ?? 1.54;
+  utterance.rate = Math.min(options.rate ?? 0.62, 0.66);
+  utterance.pitch = options.pitch ?? 1.42;
   utterance.volume = 1;
 
   const voice = getPreferredIndonesianVoice();
@@ -260,8 +260,8 @@ export function speakIndonesian(text: string, options: SpeakOptions = {}): void 
   options.onStart?.();
   window.speechSynthesis.speak(utterance);
 
-  // Safety timeout in case a headless/sandboxed browser fails to emit onend
-  window.setTimeout(finish, Math.max(1500, text.length * 140));
+  // Safety timeout adjusted for slower speaking speed
+  window.setTimeout(finish, Math.max(2200, text.length * 220));
 }
 
 function speakPromise(text: string, rate: number, token: number): Promise<void> {
@@ -271,14 +271,15 @@ function speakPromise(text: string, rate: number, token: number): Promise<void> 
       return;
     }
     if (!globalSoundEnabled || typeof window === 'undefined' || !('speechSynthesis' in window)) {
-      window.setTimeout(resolve, 480);
+      window.setTimeout(resolve, 680);
       return;
     }
 
     const utterance = new SpeechSynthesisUtterance(text);
     utterance.lang = 'id-ID';
-    utterance.rate = rate;
-    utterance.pitch = 1.56;
+    utterance.rate = Math.min(rate, 0.65);
+    utterance.pitch = 1.44;
+    utterance.volume = 1;
     const voice = getPreferredIndonesianVoice();
     if (voice) utterance.voice = voice;
 
@@ -292,7 +293,7 @@ function speakPromise(text: string, rate: number, token: number): Promise<void> 
     utterance.onend = finish;
     utterance.onerror = finish;
     window.speechSynthesis.speak(utterance);
-    window.setTimeout(finish, Math.max(900, text.length * 160));
+    window.setTimeout(finish, Math.max(1300, text.length * 240));
   });
 }
 
@@ -313,14 +314,14 @@ export async function speakSyllablesSequence(
     if (token !== activeSequenceToken) return;
     onSyllableIndex(i);
     playTapNote(i);
-    await speakPromise(syllables[i].toLowerCase(), 0.8, token);
-    await new Promise((r) => window.setTimeout(r, 110));
+    await speakPromise(syllables[i].toLowerCase(), 0.52, token);
+    await new Promise((r) => window.setTimeout(r, 260));
   }
 
   if (token !== activeSequenceToken) return;
   onSyllableIndex(-1); // indicates full word highlight
   playBlendSound();
-  await speakPromise(fullWord.toLowerCase(), 0.94, token);
+  await speakPromise(fullWord.toLowerCase(), 0.62, token);
 
   if (token !== activeSequenceToken) return;
   onSyllableIndex(null);

@@ -1,0 +1,6 @@
+{
+  "name": "Bacalah Ceria",
+  "description": "Aplikasi belajar membaca interaktif untuk anak TK dengan gambar warna-warni, metode suku kata, kata bergambar, kuis seru, dan suara pendukung.",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}

@@ -108,8 +108,8 @@ export default async function handler(
 
     const pacingNote =
       speed === 'slow'
-        ? 'Indonesian language (Bahasa Indonesia) only. Cute, cheerful 5-year-old Indonesian kindergarten child voice (suara anak kecil TK Indonesia yang sangat imut, ceria, dan polos), bright youthful childlike tone, speaking extra slowly, calmly, and crystal clearly syllable by syllable with pure Indonesian vowels.'
-        : 'Indonesian language (Bahasa Indonesia) only. Cute, cheerful 5-year-old Indonesian kindergarten child voice (suara anak kecil TK Indonesia yang ceria, imut, dan bersemangat), bright youthful childlike tone, speaking slowly and gently with authentic Indonesian pronunciation.';
+        ? 'Indonesian language (Bahasa Indonesia) only. Cute, cheerful 5-year-old Indonesian kindergarten child voice (suara anak kecil TK Indonesia yang imut, ceria, dan polos), bright youthful childlike tone, speaking clearly at a natural relaxed pace—easy for kids to follow without dragging or sounding overly slow.'
+        : 'Indonesian language (Bahasa Indonesia) only. Cute, cheerful 5-year-old Indonesian kindergarten child voice (suara anak kecil TK Indonesia yang ceria, imut, dan bersemangat), bright youthful childlike tone, speaking at a natural, lively, cheerful pace with clear Indonesian pronunciation.';
 
     const response = await ai.models.generateContent({
       model: 'gemini-3.8-flash-lite-tts',

@@ -283,7 +283,7 @@ function speakBrowserFallback(
   window.speechSynthesis.cancel();
   const utterance = new SpeechSynthesisUtterance(cleanText);
   utterance.lang = 'id-ID';
-  utterance.rate = Math.min(rate, 0.78);
+  utterance.rate = Math.min(Math.max(rate, 0.86), 0.98);
   // High cheerful childlike pitch for browser fallback
   utterance.pitch = 1.95;
   utterance.volume = 1;
@@ -473,7 +473,8 @@ export function speakIndonesian(text: string, options: SpeakOptions = {}): void 
   cancelAllSpeech();
   const token = activeSequenceToken;
   const cleanText = toIndonesianPhoneticText(text);
-  const speed: 'slow' | 'normal' = (options.rate ?? 0.72) <= 0.68 ? 'slow' : 'normal';
+  const requestedRate = options.rate ?? 0.92;
+  const speed: 'slow' | 'normal' = requestedRate <= 0.78 ? 'slow' : 'normal';
 
   const controller = new AbortController();
   activeFetchController = controller;
@@ -485,7 +486,7 @@ export function speakIndonesian(text: string, options: SpeakOptions = {}): void 
     } else {
       speakBrowserFallback(
         cleanText,
-        options.rate ?? 0.72,
+        requestedRate,
         token,
         options.onStart,
         options.onEnd
@@ -501,12 +502,12 @@ async function speakPromise(
 ): Promise<void> {
   if (token !== activeSequenceToken) return;
   if (!globalSoundEnabled) {
-    await new Promise((r) => window.setTimeout(r, 520));
+    await new Promise((r) => window.setTimeout(r, 420));
     return;
   }
 
   const cleanText = toIndonesianPhoneticText(text);
-  const speed: 'slow' | 'normal' = rate <= 0.68 ? 'slow' : 'normal';
+  const speed: 'slow' | 'normal' = rate <= 0.78 ? 'slow' : 'normal';
   const controller = new AbortController();
   activeFetchController = controller;
 
@@ -536,14 +537,14 @@ export async function speakSyllablesSequence(
     if (token !== activeSequenceToken) return;
     onSyllableIndex(i);
     playTapNote(i);
-    await speakPromise(syllables[i].toLowerCase(), 0.64, token);
-    await new Promise((r) => window.setTimeout(r, 200));
+    await speakPromise(syllables[i].toLowerCase(), 0.86, token);
+    await new Promise((r) => window.setTimeout(r, 90));
   }
 
   if (token !== activeSequenceToken) return;
   onSyllableIndex(-1);
   playBlendSound();
-  await speakPromise(fullWord.toLowerCase(), 0.72, token);
+  await speakPromise(fullWord.toLowerCase(), 0.94, token);
 
   if (token !== activeSequenceToken) return;
   onSyllableIndex(null);

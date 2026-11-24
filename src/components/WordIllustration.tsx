@@ -620,6 +620,310 @@ export const WordIllustration: React.FC<WordIllustrationProps> = ({
           </g>
         );
 
+      case 'motor':
+        return (
+          <g>
+            <circle cx="60" cy="60" r="46" fill="#E0F2FE" />
+            <circle cx="34" cy="78" r="14" fill="#1E293B" />
+            <circle cx="34" cy="78" r="7" fill="#E2E8F0" />
+            <circle cx="86" cy="78" r="14" fill="#1E293B" />
+            <circle cx="86" cy="78" r="7" fill="#E2E8F0" />
+            <path d="M34 78 L50 56 H72 L86 78" stroke="#0284C7" strokeWidth="5" strokeLinecap="round" strokeLinejoin="round" fill="none" />
+            <path d="M40 54 H64 L74 44 H84" stroke="#EF4444" strokeWidth="7" strokeLinecap="round" strokeLinejoin="round" fill="none" />
+            <rect x="40" y="48" width="22" height="8" rx="4" fill="#1E293B" />
+            <path d="M72 44 L68 32 H78" stroke="#475569" strokeWidth="3.5" strokeLinecap="round" fill="none" />
+            <circle cx="86" cy="48" r="5" fill="#FDE047" stroke="#CA8A04" strokeWidth="1.5" />
+          </g>
+        );
+
+      case 'sepeda':
+        return (
+          <g>
+            <circle cx="60" cy="60" r="46" fill="#DCFCE7" />
+            <circle cx="34" cy="76" r="16" fill="none" stroke="#1E293B" strokeWidth="4.5" />
+            <circle cx="34" cy="76" r="4" fill="#1E293B" />
+            <circle cx="86" cy="76" r="16" fill="none" stroke="#1E293B" strokeWidth="4.5" />
+            <circle cx="86" cy="76" r="4" fill="#1E293B" />
+            <path d="M34 76 L54 50 H76 L60 76 Z" stroke="#10B981" strokeWidth="4" strokeLinejoin="round" fill="none" />
+            <path d="M86 76 L72 40 H84" stroke="#10B981" strokeWidth="4" strokeLinecap="round" strokeLinejoin="round" fill="none" />
+            <path d="M54 50 L48 40" stroke="#475569" strokeWidth="3.5" strokeLinecap="round" />
+            <rect x="42" y="37" width="14" height="5" rx="2.5" fill="#1E293B" />
+            <circle cx="60" cy="76" r="5" fill="#F59E0B" />
+          </g>
+        );
+
+      case 'kereta':
+        return (
+          <g>
+            <circle cx="60" cy="60" r="46" fill="#FEF3C7" />
+            <circle cx="36" cy="24" r="7" fill="#FFFFFF" stroke="#CBD5E1" strokeWidth="1.5" />
+            <circle cx="48" cy="19" r="9" fill="#FFFFFF" stroke="#CBD5E1" strokeWidth="1.5" />
+            <rect x="28" y="34" width="10" height="14" rx="2" fill="#334155" />
+            <rect x="20" y="46" width="80" height="32" rx="8" fill="#EF4444" stroke="#991B1B" strokeWidth="2.5" />
+            <rect x="64" y="32" width="32" height="22" rx="4" fill="#3B82F6" stroke="#1E40AF" strokeWidth="2" />
+            <rect x="70" y="38" width="18" height="10" rx="2" fill="#E0F2FE" />
+            <rect x="28" y="54" width="14" height="10" rx="2" fill="#FEF08A" />
+            <rect x="46" y="54" width="14" height="10" rx="2" fill="#FEF08A" />
+            <circle cx="34" cy="82" r="9" fill="#1E293B" />
+            <circle cx="34" cy="82" r="4" fill="#E2E8F0" />
+            <circle cx="60" cy="82" r="9" fill="#1E293B" />
+            <circle cx="60" cy="82" r="4" fill="#E2E8F0" />
+            <circle cx="86" cy="82" r="9" fill="#1E293B" />
+            <circle cx="86" cy="82" r="4" fill="#E2E8F0" />
+          </g>
+        );
+
+      case 'pesawat':
+        return (
+          <g>
+            <circle cx="60" cy="60" r="46" fill="#E0F2FE" />
+            <path d="M22 62 L32 42 L44 56 Z" fill="#EF4444" stroke="#991B1B" strokeWidth="2" />
+            <path d="M52 58 L38 26 L56 26 L70 58 Z" fill="#3B82F6" stroke="#1E40AF" strokeWidth="2" />
+            <path d="M24 62 Q60 44 98 62 Q94 74 60 72 Q30 72 24 62 Z" fill="#FFFFFF" stroke="#1E293B" strokeWidth="2.5" />
+            <path d="M52 68 L42 90 L56 90 L68 68 Z" fill="#60A5FA" stroke="#1E40AF" strokeWidth="2" />
+            <circle cx="52" cy="60" r="3.5" fill="#38BDF8" />
+            <circle cx="64" cy="60" r="3.5" fill="#38BDF8" />
+            <circle cx="76" cy="60" r="3.5" fill="#38BDF8" />
+            <path d="M84 56 Q92 58 92 64 H82 Z" fill="#BAE6FD" />
+          </g>
+        );
+
+      case 'kapal':
+        return (
+          <g>
+            <circle cx="60" cy="60" r="46" fill="#CFFAFE" />
+            <rect x="46" y="24" width="10" height="18" rx="2" fill="#EF4444" stroke="#991B1B" strokeWidth="2" />
+            <rect x="64" y="28" width="10" height="14" rx="2" fill="#F59E0B" stroke="#92400E" strokeWidth="2" />
+            <rect x="36" y="40" width="48" height="20" rx="4" fill="#FFFFFF" stroke="#1E293B" strokeWidth="2" />
+            <circle cx="48" cy="50" r="4" fill="#38BDF8" />
+            <circle cx="60" cy="50" r="4" fill="#38BDF8" />
+            <circle cx="72" cy="50" r="4" fill="#38BDF8" />
+            <path d="M22 60 H98 L88 80 H32 Z" fill="#1D4ED8" stroke="#1E3A8A" strokeWidth="2.5" />
+            <path d="M18 82 Q34 74 50 82 T82 82 T102 82" stroke="#0284C7" strokeWidth="4" strokeLinecap="round" fill="none" />
+          </g>
+        );
+
+      case 'perahu':
+        return (
+          <g>
+            <circle cx="60" cy="60" r="46" fill="#E0F2FE" />
+            <line x1="58" y1="22" x2="58" y2="66" stroke="#78350F" strokeWidth="3.5" strokeLinecap="round" />
+            <path d="M58 24 L88 58 H58 Z" fill="#F43F5E" stroke="#9F1239" strokeWidth="2" />
+            <path d="M55 30 L34 58 H55 Z" fill="#FACC15" stroke="#A16207" strokeWidth="2" />
+            <path d="M26 64 H94 L84 80 H36 Z" fill="#D97706" stroke="#78350F" strokeWidth="2.5" />
+            <path d="M20 84 Q38 76 56 84 T92 84" stroke="#0EA5E9" strokeWidth="4" strokeLinecap="round" fill="none" />
+          </g>
+        );
+
+      case 'becak':
+        return (
+          <g>
+            <circle cx="60" cy="60" r="46" fill="#FFE4E6" />
+            <path d="M24 54 Q24 32 48 32 H62 V58 H26 Z" fill="#38BDF8" stroke="#0369A1" strokeWidth="2.5" />
+            <path d="M26 58 H64 L60 74 H30 Z" fill="#EF4444" stroke="#991B1B" strokeWidth="2" />
+            <path d="M62 56 L78 46 H88" stroke="#475569" strokeWidth="3.5" strokeLinecap="round" fill="none" />
+            <path d="M64 68 L84 74" stroke="#475569" strokeWidth="4" strokeLinecap="round" />
+            <circle cx="38" cy="78" r="12" fill="#1E293B" />
+            <circle cx="38" cy="78" r="5" fill="#E2E8F0" />
+            <circle cx="84" cy="78" r="12" fill="#1E293B" />
+            <circle cx="84" cy="78" r="5" fill="#E2E8F0" />
+          </g>
+        );
+
+      case 'taksi':
+        return (
+          <g>
+            <circle cx="60" cy="60" r="46" fill="#FEF9C3" />
+            <rect x="50" y="28" width="20" height="10" rx="3" fill="#1E293B" />
+            <rect x="54" y="31" width="12" height="4" rx="1" fill="#FDE047" />
+            <path d="M32 58 L42 38 H76 L88 58 Z" fill="#FACC15" stroke="#A16207" strokeWidth="2.5" />
+            <rect x="18" y="56" width="84" height="24" rx="10" fill="#FACC15" stroke="#A16207" strokeWidth="2.5" />
+            <path d="M46 42 H58 V56 H38 Z" fill="#E0F2FE" />
+            <path d="M62 42 H73 L80 56 H62 Z" fill="#E0F2FE" />
+            <rect x="30" y="64" width="60" height="6" fill="#1E293B" strokeDasharray="6 6" />
+            <circle cx="38" cy="80" r="10" fill="#1E293B" />
+            <circle cx="38" cy="80" r="4.5" fill="#E2E8F0" />
+            <circle cx="82" cy="80" r="10" fill="#1E293B" />
+            <circle cx="82" cy="80" r="4.5" fill="#E2E8F0" />
+          </g>
+        );
+
+      case 'delman':
+        return (
+          <g>
+            <circle cx="60" cy="60" r="46" fill="#FEF3C7" />
+            <path d="M24 54 Q26 32 52 32 H68 V58 H26 Z" fill="#A855F7" stroke="#6B21A8" strokeWidth="2.5" />
+            <rect x="26" y="56" width="44" height="18" rx="4" fill="#B45309" stroke="#78350F" strokeWidth="2" />
+            <path d="M70 64 H92" stroke="#78350F" strokeWidth="3.5" strokeLinecap="round" />
+            <ellipse cx="86" cy="56" rx="10" ry="7" fill="#D97706" stroke="#78350F" strokeWidth="2" />
+            <circle cx="92" cy="48" r="6" fill="#D97706" stroke="#78350F" strokeWidth="2" />
+            <circle cx="48" cy="78" r="14" fill="none" stroke="#78350F" strokeWidth="4" />
+            <circle cx="48" cy="78" r="4" fill="#F59E0B" />
+            <path d="M48 64 V92 M34 78 H62" stroke="#78350F" strokeWidth="2" />
+          </g>
+        );
+
+      case 'roket':
+        return (
+          <g>
+            <circle cx="60" cy="60" r="46" fill="#1E1B4B" />
+            <path d="M52 84 L60 102 L68 84 Z" fill="#F97316" />
+            <path d="M56 84 L60 95 L64 84 Z" fill="#FDE047" />
+            <path d="M44 68 L30 82 L44 80 Z" fill="#EF4444" stroke="#991B1B" strokeWidth="1.5" />
+            <path d="M76 68 L90 82 L76 80 Z" fill="#EF4444" stroke="#991B1B" strokeWidth="1.5" />
+            <path d="M60 20 C76 34, 78 62, 72 82 H48 C42 62, 44 34, 60 20 Z" fill="#F8FAFC" stroke="#94A3B8" strokeWidth="2" />
+            <path d="M60 20 C67 27, 71 34, 73 40 H47 C49 34, 53 27, 60 20 Z" fill="#EF4444" />
+            <circle cx="60" cy="54" r="9" fill="#38BDF8" stroke="#0369A1" strokeWidth="2.5" />
+            <circle cx="30" cy="34" r="2.2" fill="#FDE047" />
+            <circle cx="90" cy="36" r="2.5" fill="#FFFFFF" />
+          </g>
+        );
+
+      case 'helikopter':
+        return (
+          <g>
+            <circle cx="60" cy="60" r="46" fill="#E0F2FE" />
+            <line x1="24" y1="30" x2="96" y2="30" stroke="#1E293B" strokeWidth="4.5" strokeLinecap="round" />
+            <line x1="60" y1="30" x2="60" y2="42" stroke="#475569" strokeWidth="4" />
+            <path d="M22 56 H48 V64 H26 Z" fill="#F97316" stroke="#9A3412" strokeWidth="2" />
+            <circle cx="22" cy="58" r="7" fill="none" stroke="#1E293B" strokeWidth="2.5" />
+            <ellipse cx="64" cy="58" rx="26" ry="18" fill="#F97316" stroke="#9A3412" strokeWidth="2.5" />
+            <path d="M66 44 C78 44, 86 50, 86 60 H66 Z" fill="#BAE6FD" stroke="#0369A1" strokeWidth="2" />
+            <path d="M46 78 L52 86 M76 78 L70 86 M40 86 H84" stroke="#334155" strokeWidth="3.5" strokeLinecap="round" />
+          </g>
+        );
+
+      case 'kursi':
+        return (
+          <g>
+            <circle cx="60" cy="60" r="46" fill="#FEF3C7" />
+            <rect x="38" y="24" width="44" height="30" rx="5" fill="#D97706" stroke="#78350F" strokeWidth="2.5" />
+            <rect x="44" y="30" width="32" height="16" rx="3" fill="#FDE68A" />
+            <rect x="34" y="54" width="52" height="10" rx="4" fill="#B45309" stroke="#78350F" strokeWidth="2.5" />
+            <rect x="38" y="64" width="8" height="28" rx="2" fill="#92400E" />
+            <rect x="74" y="64" width="8" height="28" rx="2" fill="#92400E" />
+          </g>
+        );
+
+      case 'pensil':
+        return (
+          <g>
+            <circle cx="60" cy="60" r="46" fill="#FEF9C3" />
+            <g transform="rotate(-35 60 60)">
+              <rect x="48" y="22" width="24" height="12" rx="4" fill="#FB7185" stroke="#9F1239" strokeWidth="2" />
+              <rect x="48" y="34" width="24" height="7" fill="#CBD5E1" stroke="#475569" strokeWidth="2" />
+              <rect x="48" y="41" width="24" height="42" fill="#FACC15" stroke="#A16207" strokeWidth="2" />
+              <line x1="56" y1="41" x2="56" y2="83" stroke="#EAB308" strokeWidth="2" />
+              <line x1="64" y1="41" x2="64" y2="83" stroke="#EAB308" strokeWidth="2" />
+              <polygon points="48,83 72,83 60,101" fill="#FDE68A" stroke="#78350F" strokeWidth="2" />
+              <polygon points="56,95 64,95 60,101" fill="#1E293B" />
+            </g>
+          </g>
+        );
+
+      case 'gelas':
+        return (
+          <g>
+            <circle cx="60" cy="60" r="46" fill="#E0F2FE" />
+            <path d="M36 30 H84 L76 92 H44 Z" fill="#FFFFFF" stroke="#0284C7" strokeWidth="2.5" />
+            <path d="M40 48 H80 L76 89 H44 Z" fill="#38BDF8" opacity="0.6" />
+            <ellipse cx="60" cy="30" rx="24" ry="5" fill="#E0F2FE" stroke="#0284C7" strokeWidth="2.5" />
+            <path d="M74 20 L64 56" stroke="#EF4444" strokeWidth="4" strokeLinecap="round" />
+          </g>
+        );
+
+      case 'piring':
+        return (
+          <g>
+            <circle cx="60" cy="60" r="46" fill="#FFE4E6" />
+            <circle cx="60" cy="60" r="36" fill="#FFFFFF" stroke="#FB7185" strokeWidth="3" />
+            <circle cx="60" cy="60" r="24" fill="#FFF1F2" stroke="#FDA4AF" strokeWidth="2" />
+            <circle cx="53" cy="57" r="2.5" fill="#475569" />
+            <circle cx="67" cy="57" r="2.5" fill="#475569" />
+            <path d="M55 65 Q60 69 65 65" stroke="#475569" strokeWidth="2" strokeLinecap="round" fill="none" />
+          </g>
+        );
+
+      case 'sendok':
+        return (
+          <g>
+            <circle cx="60" cy="60" r="46" fill="#E0E7FF" />
+            <g transform="rotate(35 60 60)">
+              <ellipse cx="60" cy="36" rx="14" ry="18" fill="#CBD5E1" stroke="#475569" strokeWidth="2.5" />
+              <ellipse cx="56" cy="33" rx="4" ry="7" fill="#FFFFFF" opacity="0.7" />
+              <rect x="56" y="54" width="8" height="42" rx="4" fill="#94A3B8" stroke="#475569" strokeWidth="2.5" />
+            </g>
+          </g>
+        );
+
+      case 'payung':
+        return (
+          <g>
+            <circle cx="60" cy="60" r="46" fill="#E0F2FE" />
+            <path d="M60 20 V84 C60 92, 72 92, 72 84" stroke="#78350F" strokeWidth="4" strokeLinecap="round" fill="none" />
+            <path d="M22 56 A38 34 0 0 1 98 56 Q85 50 73 56 Q60 50 47 56 Q35 50 22 56 Z" fill="#F43F5E" stroke="#9F1239" strokeWidth="2.5" />
+            <path d="M47 56 Q52 28 60 22 Q68 28 73 56 Z" fill="#FACC15" />
+          </g>
+        );
+
+      case 'kunci':
+        return (
+          <g>
+            <circle cx="60" cy="60" r="46" fill="#FEF3C7" />
+            <circle cx="38" cy="60" r="16" fill="#FACC15" stroke="#A16207" strokeWidth="2.5" />
+            <circle cx="38" cy="60" r="6" fill="#FEF3C7" stroke="#A16207" strokeWidth="2" />
+            <rect x="54" y="55" width="42" height="10" rx="3" fill="#FACC15" stroke="#A16207" strokeWidth="2.5" />
+            <rect x="74" y="65" width="7" height="12" rx="2" fill="#FACC15" stroke="#A16207" strokeWidth="2" />
+            <rect x="86" y="65" width="7" height="16" rx="2" fill="#FACC15" stroke="#A16207" strokeWidth="2" />
+          </g>
+        );
+
+      case 'sapu':
+        return (
+          <g>
+            <circle cx="60" cy="60" r="46" fill="#DCFCE7" />
+            <g transform="rotate(28 60 60)">
+              <rect x="56" y="18" width="8" height="46" rx="4" fill="#D97706" stroke="#78350F" strokeWidth="2" />
+              <rect x="46" y="60" width="28" height="8" rx="3" fill="#EF4444" stroke="#991B1B" strokeWidth="2" />
+              <path d="M44 68 H76 L82 96 H38 Z" fill="#FACC15" stroke="#A16207" strokeWidth="2" />
+              <line x1="52" y1="68" x2="50" y2="96" stroke="#CA8A04" strokeWidth="2" />
+              <line x1="60" y1="68" x2="60" y2="96" stroke="#CA8A04" strokeWidth="2" />
+              <line x1="68" y1="68" x2="70" y2="96" stroke="#CA8A04" strokeWidth="2" />
+            </g>
+          </g>
+        );
+
+      case 'boneka':
+        return (
+          <g>
+            <circle cx="60" cy="60" r="46" fill="#FFE4E6" />
+            <circle cx="38" cy="34" r="10" fill="#D97706" stroke="#78350F" strokeWidth="2" />
+            <circle cx="82" cy="34" r="10" fill="#D97706" stroke="#78350F" strokeWidth="2" />
+            <ellipse cx="60" cy="76" rx="22" ry="20" fill="#D97706" stroke="#78350F" strokeWidth="2.5" />
+            <circle cx="60" cy="48" r="20" fill="#F59E0B" stroke="#78350F" strokeWidth="2.5" />
+            <ellipse cx="60" cy="54" rx="10" ry="8" fill="#FEF3C7" />
+            <circle cx="52" cy="44" r="2.8" fill="#0F172A" />
+            <circle cx="68" cy="44" r="2.8" fill="#0F172A" />
+            <circle cx="60" cy="51" r="3" fill="#78350F" />
+            <polygon points="60,66 50,61 50,71" fill="#F43F5E" />
+            <polygon points="60,66 70,61 70,71" fill="#F43F5E" />
+          </g>
+        );
+
+      case 'gitar':
+        return (
+          <g>
+            <circle cx="60" cy="60" r="46" fill="#FEF3C7" />
+            <g transform="rotate(30 60 60)">
+              <rect x="55" y="16" width="10" height="36" rx="3" fill="#78350F" />
+              <ellipse cx="60" cy="62" rx="17" ry="14" fill="#F97316" stroke="#9A3412" strokeWidth="2" />
+              <ellipse cx="60" cy="80" rx="22" ry="16" fill="#F97316" stroke="#9A3412" strokeWidth="2.5" />
+              <circle cx="60" cy="66" r="7" fill="#451A03" stroke="#FDE68A" strokeWidth="2" />
+              <rect x="52" y="84" width="16" height="4" rx="2" fill="#451A03" />
+            </g>
+          </g>
+        );
+
       case 'awan':
       default:
         return (

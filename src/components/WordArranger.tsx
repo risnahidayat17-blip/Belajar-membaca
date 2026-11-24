@@ -1,10 +1,12 @@
 import React, { useMemo, useState } from 'react';
 import { Volume2, RotateCcw, CheckCircle2, ArrowRight, Lightbulb } from 'lucide-react';
 import {
+  CATEGORY_META,
   PICTURE_WORDS,
   SENTENCE_PUZZLES,
   SentencePuzzle,
   WordCardItem,
+  WordCategory,
 } from '../data/bacalahData';
 import { WordIllustration } from './WordIllustration';
 import {
@@ -27,15 +29,19 @@ interface TileItem {
   text: string;
 }
 
+type WordFilter = 'all' | WordCategory;
+
 function shuffleAvoidSame<T extends { text: string }>(
   items: T[],
   expectedOrder: string[]
 ): T[] {
   if (items.length <= 1) return items;
   let copy = [...items];
-  for (let attempt = 0; attempt < 8; attempt++) {
+  for (let attempt = 0; attempt < 12; attempt++) {
     copy = [...items].sort(() => Math.random() - 0.5);
-    const same = copy.every((item, i) => item.text === expectedOrder[i]);
+    const same = copy.every(
+      (item, i) => item.text.toLowerCase() === expectedOrder[i].toLowerCase()
+    );
     if (!same) return copy;
   }
   return [items[items.length - 1], ...items.slice(0, items.length - 1)];
@@ -52,12 +58,17 @@ export const WordArranger: React.FC<WordArrangerProps> = ({ onEarnStar }) => {
   const [level, setLevel] = useState<ArrangeLevel>('syllables');
 
   // Level 1: Susun Suku Kata -> Kata
+  const [wordFilter, setWordFilter] = useState<WordFilter>('all');
   const wordPool: WordCardItem[] = useMemo(
-    () => PICTURE_WORDS.filter((w) => w.syllables.length >= 2),
-    []
+    () =>
+      PICTURE_WORDS.filter(
+        (w) => w.syllables.length >= 2 && (wordFilter === 'all' || w.category === wordFilter)
+      ),
+    [wordFilter]
   );
   const [wordIdx, setWordIdx] = useState(0);
-  const currentWordItem = wordPool[wordIdx];
+  const safeWordIdx = wordIdx < wordPool.length ? wordIdx : 0;
+  const currentWordItem = wordPool[safeWordIdx];
 
   const [wordPlaced, setWordPlaced] = useState<TileItem[]>([]);
   const [wordStatus, setWordStatus] = useState<'idle' | 'correct' | 'wrong'>('idle');
@@ -101,7 +112,8 @@ export const WordArranger: React.FC<WordArrangerProps> = ({ onEarnStar }) => {
 
     if (nextPlaced.length === currentWordItem.syllables.length) {
       const formed = nextPlaced.map((t) => t.text).join('');
-      if (formed.toLowerCase() === currentWordItem.word.toLowerCase().replace('-', '')) {
+      const targetWord = currentWordItem.word.replace(/-/g, '');
+      if (formed.toLowerCase() === targetWord.toLowerCase()) {
         setWordStatus('correct');
         onEarnStar();
         playSuccessFanfare();
@@ -134,12 +146,21 @@ export const WordArranger: React.FC<WordArrangerProps> = ({ onEarnStar }) => {
 
   const handleNextWord = () => {
     playBlendSound();
-    const next = (wordIdx + 1) % wordPool.length;
+    const next = (safeWordIdx + 1) % wordPool.length;
     setWordIdx(next);
     setWordPlaced([]);
     setWordStatus('idle');
     setWordHighlightIdx(null);
     speakIndonesian(`Ayo susun kata ${wordPool[next].word}!`);
+  };
+
+  const handleChangeWordFilter = (nextFilter: WordFilter) => {
+    playTapNote(0);
+    setWordFilter(nextFilter);
+    setWordIdx(0);
+    setWordPlaced([]);
+    setWordStatus('idle');
+    setWordHighlightIdx(null);
   };
 
   const handleListenWordTarget = () => {
@@ -259,10 +280,37 @@ export const WordArranger: React.FC<WordArrangerProps> = ({ onEarnStar }) => {
 
       {level === 'syllables' ? (
         <div className="bg-white border border-slate-200 rounded-2xl p-6 sm:p-8">
+          <div className="flex flex-wrap items-center gap-1.5 pb-4 mb-4 border-b border-slate-100">
+            {(
+              [
+                { id: 'all', label: 'Semua Tema' },
+                { id: 'transportasi', label: 'Transportasi' },
+                { id: 'benda', label: 'Benda' },
+                { id: 'hewan', label: 'Hewan' },
+                { id: 'buah', label: 'Buah' },
+                { id: 'alam', label: 'Alam' },
+              ] as const
+            ).map((tab) => (
+              <button
+                key={tab.id}
+                type="button"
+                onClick={() => handleChangeWordFilter(tab.id)}
+                className={`px-3 py-1.5 rounded-lg text-xs sm:text-sm font-semibold transition-colors whitespace-nowrap shrink-0 cursor-pointer ${
+                  wordFilter === tab.id
+                    ? 'bg-sky-600 text-white'
+                    : 'bg-slate-100 text-slate-700 hover:bg-slate-200'
+                }`}
+              >
+                {tab.label}
+              </button>
+            ))}
+          </div>
+
           <div className="flex items-center justify-between gap-4 pb-5 border-b border-slate-100 flex-wrap">
             <span className="text-sm font-semibold text-slate-600">
-              Latihan <span className="tabular-nums font-bold text-slate-900">{wordIdx + 1}</span> /{' '}
-              <span className="tabular-nums">{wordPool.length}</span>
+              Latihan <span className="tabular-nums font-bold text-slate-900">{safeWordIdx + 1}</span> /{' '}
+              <span className="tabular-nums">{wordPool.length}</span> ·{' '}
+              <span className="text-sky-700">{CATEGORY_META[currentWordItem.category].label}</span>
             </span>
 
             <div className="flex items-center gap-2">

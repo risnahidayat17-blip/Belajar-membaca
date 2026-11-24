@@ -78,6 +78,7 @@ export const PictureWords: React.FC = () => {
               { id: 'hewan', label: 'Hewan' },
               { id: 'buah', label: 'Buah & Makanan' },
               { id: 'benda', label: 'Benda' },
+              { id: 'transportasi', label: 'Transportasi' },
               { id: 'alam', label: 'Alam' },
             ] as const
           ).map((tab) => (
@@ -102,7 +103,7 @@ export const PictureWords: React.FC = () => {
 
       {/* Generated Theme Illustration Gallery / Spotlight */}
       {filter === 'all' ? (
-        <div className="grid grid-cols-2 lg:grid-cols-4 gap-4 mb-7">
+        <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-4 mb-7">
           {(Object.keys(CATEGORY_META) as WordCategory[]).map((catKey, idx) => {
             const meta = CATEGORY_META[catKey];
             return (

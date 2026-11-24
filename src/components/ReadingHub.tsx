@@ -87,7 +87,7 @@ export const ReadingHub: React.FC<ReadingHubProps> = ({ onEarnStar }) => {
         <div className="inline-flex flex-wrap items-center gap-1 p-1.5 bg-slate-100 rounded-xl">
           {(
             [
-              { id: 'bacalah', label: 'Buku Bacalah (15 Hal)' },
+              { id: 'bacalah', label: 'Buku Bacalah (20 Hal)' },
               { id: 'huruf', label: 'Huruf A–Z' },
               { id: 'sukukata', label: 'Suku Kata' },
               { id: 'kata', label: 'Kata Bergambar' },

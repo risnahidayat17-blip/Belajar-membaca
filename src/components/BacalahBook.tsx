@@ -1,6 +1,5 @@
-import React, { useState } from 'react';
+import React, { useMemo, useState } from 'react';
 import {
-  Volume2,
   Play,
   ChevronLeft,
   ChevronRight,
@@ -13,8 +12,10 @@ import {
   BacalahPageLesson,
   BacalahWord,
 } from '../data/bacalahLessonsData';
+import { WordIllustration } from './WordIllustration';
 import {
   cancelAllSpeech,
+  getIndonesianVoiceLabel,
   playSuccessFanfare,
   playTapNote,
   speakIndonesian,
@@ -25,365 +26,445 @@ interface BacalahBookProps {
   onEarnStar: () => void;
 }
 
+interface BookSpread {
+  id: string;
+  label: string;
+  jilid: 1 | 2 | 3 | 4;
+  leftPage: BacalahPageLesson;
+  rightPage: BacalahPageLesson;
+}
+
+const ACCENT_RIBBON: Record<BacalahPageLesson['accentTheme'], string> = {
+  sky: 'bg-sky-600 text-white',
+  rose: 'bg-rose-500 text-white',
+  amber: 'bg-amber-400 text-slate-900',
+  emerald: 'bg-emerald-600 text-white',
+  indigo: 'bg-indigo-600 text-white',
+};
+
+const ACCENT_CORE_BG: Record<BacalahPageLesson['accentTheme'], string> = {
+  sky: 'bg-sky-50 border-sky-300 text-sky-800 hover:bg-sky-100',
+  rose: 'bg-rose-50 border-rose-300 text-rose-800 hover:bg-rose-100',
+  amber: 'bg-amber-50 border-amber-300 text-amber-900 hover:bg-amber-100',
+  emerald: 'bg-emerald-50 border-emerald-300 text-emerald-800 hover:bg-emerald-100',
+  indigo: 'bg-indigo-50 border-indigo-300 text-indigo-800 hover:bg-indigo-100',
+};
+
+const ACCENT_ILLUSTRATION_BG: Record<BacalahPageLesson['accentTheme'], string> = {
+  sky: 'bg-sky-50 border-sky-200',
+  rose: 'bg-rose-50 border-rose-200',
+  amber: 'bg-amber-50 border-amber-200',
+  emerald: 'bg-emerald-50 border-emerald-200',
+  indigo: 'bg-indigo-50 border-indigo-200',
+};
+
 export const BacalahBook: React.FC<BacalahBookProps> = ({ onEarnStar }) => {
-  // Default to page 6 ("dana - dan") matching the user's reference photo!
-  const [selectedPageIdx, setSelectedPageIdx] = useState<number>(5);
-  const [jilidFilter, setJilidFilter] = useState<1 | 2 | 3 | 'all'>('all');
-  const [colorSyllables, setColorSyllables] = useState<boolean>(true);
-  const [activeDrillIdx, setActiveDrillIdx] = useState<number | null>(null);
-  const [activeLineIdx, setActiveLineIdx] = useState<number | null>(null);
-  const [completedPageIds, setCompletedPageIds] = useState<string[]>([]);
-  const [isReadingPage, setIsReadingPage] = useState<boolean>(false);
-
-  const currentLesson: BacalahPageLesson = BACALAH_LESSONS[selectedPageIdx];
-  const isCompleted = completedPageIds.includes(currentLesson.id);
-
-  const visibleLessons =
-    jilidFilter === 'all'
-      ? BACALAH_LESSONS
-      : BACALAH_LESSONS.filter((l) => l.jilid === jilidFilter);
-
-  const handleSelectLesson = (lesson: BacalahPageLesson) => {
-    cancelAllSpeech();
-    setIsReadingPage(false);
-    setActiveDrillIdx(null);
-    setActiveLineIdx(null);
-    const globalIdx = BACALAH_LESSONS.findIndex((x) => x.id === lesson.id);
-    setSelectedPageIdx(globalIdx);
-    playTapNote(globalIdx);
-    speakIndonesian(`Halaman ${lesson.pageNumber}. ${lesson.titleAnchor.replace(/-/g, ' ')}`);
-  };
-
-  const handleTapDrillWord = (item: BacalahWord, idx: number) => {
-    setIsReadingPage(false);
-    setActiveLineIdx(null);
-    setActiveDrillIdx(idx);
-    if (colorSyllables && item.syllables.length > 1) {
-      speakSyllablesSequence(
-        item.syllables,
-        item.word,
-        () => {},
-        () => setActiveDrillIdx(null)
-      );
-    } else {
-      playTapNote(idx);
-      speakIndonesian(item.word, {
-        rate: 0.82,
-        onEnd: () => setActiveDrillIdx(null),
-      });
+  const spreads: BookSpread[] = useMemo(() => {
+    const pairs: BookSpread[] = [];
+    for (let i = 0; i < BACALAH_LESSONS.length; i += 2) {
+      const left = BACALAH_LESSONS[i];
+      const right = BACALAH_LESSONS[i + 1];
+      if (left && right) {
+        pairs.push({
+          id: `sp-${left.pageNumber}-${right.pageNumber}`,
+          label: `Hal. ${left.pageNumber}–${right.pageNumber}`,
+          jilid: left.jilid,
+          leftPage: left,
+          rightPage: right,
+        });
+      }
     }
+    return pairs;
+  }, []);
+
+  const [jilidFilter, setJilidFilter] = useState<1 | 2 | 3 | 4 | 'all'>('all');
+  const [spreadIdx, setSpreadIdx] = useState<number>(0);
+  const [colorSyllables, setColorSyllables] = useState<boolean>(true);
+  const [activeTargetKey, setActiveTargetKey] = useState<string | null>(null);
+  const [completedPageIds, setCompletedPageIds] = useState<string[]>([]);
+  const [readingPageId, setReadingPageId] = useState<string | null>(null);
+
+  const visibleSpreads = useMemo(
+    () =>
+      jilidFilter === 'all'
+        ? spreads
+        : spreads.filter(
+            (s) => s.leftPage.jilid === jilidFilter || s.rightPage.jilid === jilidFilter
+          ),
+    [jilidFilter, spreads]
+  );
+
+  const currentSpread = visibleSpreads[spreadIdx] || visibleSpreads[0];
+  const voiceLabel = getIndonesianVoiceLabel();
+
+  const handleSelectJilid = (nextJilid: 1 | 2 | 3 | 4 | 'all') => {
+    cancelAllSpeech();
+    setReadingPageId(null);
+    setActiveTargetKey(null);
+    setJilidFilter(nextJilid);
+    setSpreadIdx(0);
+    playTapNote(0);
   };
 
-  const handleTapLine = (line: string, idx: number) => {
-    setIsReadingPage(false);
-    setActiveDrillIdx(null);
-    setActiveLineIdx(idx);
-    playTapNote(idx % 6);
-    speakIndonesian(line, {
-      rate: 0.84,
-      onEnd: () => setActiveLineIdx(null),
+  const handleSelectSpread = (idx: number) => {
+    cancelAllSpeech();
+    setReadingPageId(null);
+    setActiveTargetKey(null);
+    setSpreadIdx(idx);
+    playTapNote(idx);
+  };
+
+  const handleTapCoreSyllable = (pageId: string, syl: string, idx: number) => {
+    setReadingPageId(null);
+    const key = `${pageId}-core-${idx}`;
+    setActiveTargetKey(key);
+    playTapNote(idx);
+    const clean = syl.replace(/-/g, ' ');
+    speakIndonesian(clean, {
+      rate: 0.68,
+      onEnd: () => setActiveTargetKey(null),
     });
   };
 
-  const handleReadFullPage = () => {
-    cancelAllSpeech();
-    setIsReadingPage(true);
-    setActiveDrillIdx(null);
-    setActiveLineIdx(null);
+  const handleTapDrillWord = (pageId: string, item: BacalahWord, idx: number) => {
+    setReadingPageId(null);
+    const key = `${pageId}-w-${idx}`;
+    setActiveTargetKey(key);
+    speakSyllablesSequence(
+      item.syllables,
+      item.word,
+      () => {},
+      () => setActiveTargetKey(null)
+    );
+  };
 
-    const linesToRead = currentLesson.lines;
+  const handleReadAllCoreSyllables = (lesson: BacalahPageLesson) => {
+    cancelAllSpeech();
+    setReadingPageId(lesson.id);
     let idx = 0;
 
-    const readNextLine = () => {
-      if (idx >= linesToRead.length) {
-        setIsReadingPage(false);
-        setActiveLineIdx(null);
+    const next = () => {
+      if (idx >= lesson.coreSyllables.length) {
+        setReadingPageId(null);
+        setActiveTargetKey(null);
         return;
       }
-      const currentIdx = idx;
-      setActiveLineIdx(currentIdx);
+      const cur = idx;
+      setActiveTargetKey(`${lesson.id}-core-${cur}`);
+      playTapNote(cur);
       idx++;
-      speakIndonesian(linesToRead[currentIdx], {
-        rate: 0.62,
-        onEnd: () => {
-          window.setTimeout(readNextLine, 420);
-        },
+      speakIndonesian(lesson.coreSyllables[cur].replace(/-/g, ' '), {
+        rate: 0.68,
+        onEnd: () => window.setTimeout(next, 240),
       });
     };
 
-    readNextLine();
+    next();
   };
 
-  const handleMarkPageDone = () => {
-    if (!isCompleted) {
-      setCompletedPageIds((prev) => [...prev, currentLesson.id]);
+  const handleMarkPageDone = (lesson: BacalahPageLesson) => {
+    if (!completedPageIds.includes(lesson.id)) {
+      setCompletedPageIds((prev) => [...prev, lesson.id]);
       onEarnStar();
     }
     playSuccessFanfare();
-    speakIndonesian(`Hebat! Kamu selesai membaca halaman ${currentLesson.pageNumber}!`);
+    speakIndonesian(`Hebat! Kamu selesai membaca suku kata halaman ${lesson.pageNumber}!`);
   };
 
-  const handlePrevPage = () => {
-    const prevIdx =
-      (selectedPageIdx - 1 + BACALAH_LESSONS.length) % BACALAH_LESSONS.length;
-    handleSelectLesson(BACALAH_LESSONS[prevIdx]);
-  };
+  const renderSyllablePage = (lesson: BacalahPageLesson, side: 'left' | 'right') => {
+    const done = completedPageIds.includes(lesson.id);
+    const isReadingThisPage = readingPageId === lesson.id;
 
-  const handleNextPage = () => {
-    const nextIdx = (selectedPageIdx + 1) % BACALAH_LESSONS.length;
-    handleSelectLesson(BACALAH_LESSONS[nextIdx]);
+    return (
+      <article className="p-5 sm:p-6 flex flex-col justify-between gap-4 bg-[#FFFCF4] h-full">
+        <div>
+          {/* Magazine Running Header */}
+          <div className="flex items-center justify-between gap-2 pb-3 border-b border-amber-200/80">
+            {side === 'left' ? (
+              <>
+                <span className="font-display text-sm font-extrabold text-slate-600 tabular-nums">
+                  {lesson.pageNumber}.
+                </span>
+                <span className="text-[11px] sm:text-xs font-semibold text-slate-500 truncate">
+                  Majalah Bacalah Suku Kata · Jilid {lesson.jilid}
+                </span>
+              </>
+            ) : (
+              <>
+                <span className="text-[11px] sm:text-xs font-semibold text-slate-500 truncate">
+                  Majalah Bacalah Suku Kata · Jilid {lesson.jilid}
+                </span>
+                <span className="font-display text-sm font-extrabold text-slate-600 tabular-nums">
+                  {lesson.pageNumber}.
+                </span>
+              </>
+            )}
+          </div>
+
+          {/* Feature Header + Illustration */}
+          <div className="flex items-center justify-between gap-3 mt-3.5 mb-4">
+            <div className="min-w-0">
+              <span
+                className={`inline-block text-[11px] font-bold px-2.5 py-0.5 rounded-md ${
+                  ACCENT_RIBBON[lesson.accentTheme]
+                }`}
+              >
+                {lesson.focusLabel}
+              </span>
+              <h3 className="mt-1.5 font-display text-xl sm:text-2xl font-extrabold text-slate-900 underline decoration-2 underline-offset-4 decoration-slate-800">
+                {lesson.titleAnchor}
+              </h3>
+            </div>
+
+            <div
+              className={`w-16 h-16 rounded-2xl border p-1.5 shrink-0 ${
+                ACCENT_ILLUSTRATION_BG[lesson.accentTheme]
+              }`}
+            >
+              <WordIllustration illustKey={lesson.illustKey} />
+            </div>
+          </div>
+
+          {/* Core Syllable Strip (ba bi bu be bo) */}
+          <div className="mb-4">
+            <div className="text-[11px] font-bold text-slate-500 mb-2">
+              Suku Kata Inti (Ketuk satu per satu)
+            </div>
+            <div className="grid grid-cols-5 gap-1.5 sm:gap-2">
+              {lesson.coreSyllables.map((syl, idx) => {
+                const key = `${lesson.id}-core-${idx}`;
+                const isLit = activeTargetKey === key;
+                return (
+                  <button
+                    key={key}
+                    type="button"
+                    onClick={() => handleTapCoreSyllable(lesson.id, syl, idx)}
+                    className={`py-2 px-1 rounded-xl border-2 font-display text-lg sm:text-xl font-extrabold text-center transition-transform cursor-pointer focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-sky-500 ${
+                      isLit
+                        ? 'bg-amber-300 border-amber-500 text-slate-900 scale-105 shadow-sm'
+                        : ACCENT_CORE_BG[lesson.accentTheme]
+                    }`}
+                  >
+                    {syl}
+                  </button>
+                );
+              })}
+            </div>
+          </div>
+
+          {/* 18 Full Syllable Drills Grid (3 columns x 6 rows) */}
+          <div>
+            <div className="text-[11px] font-bold text-slate-500 mb-2">
+              Latihan Gabungan Suku Kata (Ketuk untuk Eja & Baca)
+            </div>
+            <div className="grid grid-cols-3 gap-2">
+              {lesson.drillWords.map((item, idx) => {
+                const key = `${lesson.id}-w-${idx}`;
+                const isLit = activeTargetKey === key;
+                return (
+                  <button
+                    key={key}
+                    type="button"
+                    onClick={() => handleTapDrillWord(lesson.id, item, idx)}
+                    className={`py-2.5 px-1.5 rounded-xl border text-center transition-all cursor-pointer focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-sky-500 ${
+                      isLit
+                        ? 'bg-amber-200 border-amber-400 scale-105 shadow-sm'
+                        : 'bg-white border-amber-200/70 hover:border-sky-400'
+                    }`}
+                  >
+                    <span className="font-display text-base sm:text-lg font-extrabold tracking-tight">
+                      {colorSyllables ? (
+                        item.syllables.map((syl, sIdx) => (
+                          <React.Fragment key={sIdx}>
+                            {sIdx > 0 && (
+                              <span className="text-slate-300 font-normal mx-0.5">-</span>
+                            )}
+                            <span
+                              className={
+                                sIdx % 2 === 0
+                                  ? 'text-sky-800'
+                                  : sIdx % 3 === 1
+                                  ? 'text-rose-600'
+                                  : 'text-emerald-700'
+                              }
+                            >
+                              {syl}
+                            </span>
+                          </React.Fragment>
+                        ))
+                      ) : (
+                        item.syllables.join('-')
+                      )}
+                    </span>
+                  </button>
+                );
+              })}
+            </div>
+          </div>
+        </div>
+
+        {/* Page Footer Actions */}
+        <div className="flex flex-wrap items-center justify-between gap-2 pt-3 border-t border-amber-200/80">
+          <button
+            type="button"
+            onClick={() => handleReadAllCoreSyllables(lesson)}
+            className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-sky-600 hover:bg-sky-700 text-white text-xs font-semibold transition-colors cursor-pointer"
+          >
+            <Play className="w-3.5 h-3.5 fill-current" aria-hidden="true" />
+            <span>{isReadingThisPage ? 'Sedang Membaca...' : 'Baca Suku Kata Inti'}</span>
+          </button>
+
+          <button
+            type="button"
+            onClick={() => handleMarkPageDone(lesson)}
+            className={`inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-bold transition-colors cursor-pointer ${
+              done
+                ? 'bg-emerald-100 text-emerald-800 border border-emerald-300'
+                : 'bg-emerald-600 hover:bg-emerald-700 text-white'
+            }`}
+          >
+            <CheckCircle2 className="w-3.5 h-3.5" aria-hidden="true" />
+            <span>{done ? 'Sudah Dibaca' : 'Tandai Selesai'}</span>
+          </button>
+        </div>
+      </article>
+    );
   };
 
   return (
     <section aria-labelledby="buku-bacalah-heading" className="max-w-6xl mx-auto px-4 sm:px-6 py-6">
-      {/* Section Header + Jilid Filter */}
-      <div className="flex flex-col md:flex-row md:items-end justify-between gap-4 mb-6">
+      {/* Top Header & Controls */}
+      <div className="flex flex-col lg:flex-row lg:items-end justify-between gap-4 mb-5">
         <div>
           <h2 id="buku-bacalah-heading" className="font-display text-2xl sm:text-3xl font-extrabold text-slate-900">
-            Buku Bacalah — Cara Cepat Belajar Membaca
+            Buku & Majalah Bacalah — Penuh Suku Kata
           </h2>
           <p className="text-slate-600 text-sm sm:text-base mt-1">
-            Ketuk kata latihan dan baris bacaan di halaman buku untuk mendengar suaranya. Tersedia <span className="font-semibold text-slate-900 tabular-nums">{BACALAH_LESSONS.length}</span> halaman dari Jilid 1, 2, dan 3.
+            20 halaman penuh suku kata (A–Z, akhiran konsonan, ng, dan ny). Suara Indonesia aktif:{' '}
+            <span className="font-semibold text-sky-700">{voiceLabel}</span>
           </p>
         </div>
 
-        <div className="flex flex-wrap items-center gap-1 p-1 bg-slate-100 rounded-xl self-start">
-          {(
-            [
-              { id: 'all', label: 'Semua (15 Hal)' },
-              { id: 1, label: 'Jilid 1' },
-              { id: 2, label: 'Jilid 2' },
-              { id: 3, label: 'Jilid 3' },
-            ] as const
-          ).map((tab) => (
-            <button
-              key={String(tab.id)}
-              type="button"
-              onClick={() => {
-                playTapNote(0);
-                setJilidFilter(tab.id);
-              }}
-              className={`px-3.5 py-2 text-xs sm:text-sm font-semibold rounded-lg transition-colors whitespace-nowrap shrink-0 cursor-pointer ${
-                jilidFilter === tab.id
-                  ? 'bg-white text-slate-900 shadow-sm'
-                  : 'text-slate-600 hover:text-slate-900'
-              }`}
-            >
-              {tab.label}
-            </button>
-          ))}
+        <div className="flex flex-wrap items-center gap-2">
+          <button
+            type="button"
+            onClick={() => {
+              playTapNote(1);
+              setColorSyllables((v) => !v);
+            }}
+            aria-pressed={colorSyllables}
+            className={`inline-flex items-center gap-1.5 px-3.5 py-2 rounded-xl border text-xs sm:text-sm font-semibold transition-colors cursor-pointer ${
+              colorSyllables
+                ? 'bg-amber-100 border-amber-300 text-amber-900'
+                : 'bg-white border-slate-200 text-slate-700'
+            }`}
+          >
+            <Palette className="w-4 h-4" aria-hidden="true" />
+            <span>{colorSyllables ? 'Warna Suku Kata' : 'Teks Polos'}</span>
+          </button>
+
+          <span className="text-xs font-semibold text-slate-600 bg-white border border-slate-200 px-3 py-2 rounded-xl tabular-nums">
+            Selesai: {completedPageIds.length}/{BACALAH_LESSONS.length} Hal
+          </span>
         </div>
       </div>
 
-      <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 items-start">
-        {/* Left Sidebar: Daftar Halaman Buku Bacalah */}
-        <div className="lg:col-span-4 bg-white border border-slate-200 rounded-2xl p-4 sm:p-5">
-          <div className="flex items-center justify-between text-xs font-bold text-slate-500 mb-3">
-            <span>Daftar Halaman Buku</span>
-            <span className="tabular-nums">
-              Selesai: {completedPageIds.length}/{BACALAH_LESSONS.length}
-            </span>
-          </div>
+      {/* Jilid Filter */}
+      <div className="flex flex-wrap items-center gap-1.5 p-1.5 bg-slate-100 rounded-xl mb-3 self-start w-fit">
+        {(
+          [
+            { id: 'all', label: 'Semua (20 Hal)' },
+            { id: 1, label: 'Jilid 1: Dasar (B–M)' },
+            { id: 2, label: 'Jilid 2: Lanjut (N–Z)' },
+            { id: 3, label: 'Jilid 3: Akhiran (-n, -m, -r, -s, -t)' },
+            { id: 4, label: 'Jilid 4: ng & ny' },
+          ] as const
+        ).map((tab) => (
+          <button
+            key={String(tab.id)}
+            type="button"
+            onClick={() => handleSelectJilid(tab.id)}
+            className={`px-3.5 py-2 text-xs sm:text-sm font-semibold rounded-lg transition-colors whitespace-nowrap shrink-0 cursor-pointer ${
+              jilidFilter === tab.id
+                ? 'bg-white text-slate-900 shadow-sm'
+                : 'text-slate-600 hover:text-slate-900'
+            }`}
+          >
+            {tab.label}
+          </button>
+        ))}
+      </div>
 
-          <div className="space-y-2 max-h-[540px] overflow-y-auto pr-1">
-            {visibleLessons.map((lesson) => {
-              const isSelected = lesson.id === currentLesson.id;
-              const done = completedPageIds.includes(lesson.id);
-
-              return (
-                <button
-                  key={lesson.id}
-                  type="button"
-                  onClick={() => handleSelectLesson(lesson)}
-                  className={`w-full text-left px-3.5 py-3 rounded-xl border transition-all flex items-center justify-between gap-3 cursor-pointer ${
-                    isSelected
-                      ? 'bg-sky-600 border-sky-600 text-white shadow-sm'
-                      : 'bg-slate-50/70 border-slate-200 text-slate-900 hover:border-sky-300 hover:bg-white'
-                  }`}
-                >
-                  <div className="min-w-0">
-                    <div
-                      className={`text-[11px] font-semibold ${
-                        isSelected ? 'text-sky-100' : 'text-slate-500'
-                      }`}
-                    >
-                      Hal. <span className="tabular-nums">{lesson.pageNumber}</span> · Jilid {lesson.jilid} · {lesson.focusLabel}
-                    </div>
-                    <div className="font-display text-base font-bold truncate mt-0.5">
-                      {lesson.titleAnchor}
-                    </div>
-                  </div>
-                  {done && (
-                    <CheckCircle2
-                      className={`w-5 h-5 shrink-0 ${
-                        isSelected ? 'text-amber-300' : 'text-emerald-600'
-                      }`}
-                      aria-label="Halaman selesai"
-                    />
-                  )}
-                </button>
-              );
-            })}
-          </div>
-        </div>
-
-        {/* Right Stage: Interactive Open Storybook Page */}
-        <div className="lg:col-span-8 bg-[#FFFCF3] border-2 border-amber-200 rounded-2xl p-6 sm:p-8 shadow-sm">
-          {/* Top Book Header Strip (matching the photo's page number + book title) */}
-          <div className="flex flex-wrap items-center justify-between gap-3 pb-4 border-b border-amber-200/80">
-            <div className="flex items-center gap-3">
-              <span className="font-display text-sm font-bold text-slate-500 tabular-nums">
-                {currentLesson.pageNumber}.
-              </span>
-              <span className="text-xs sm:text-sm font-medium text-slate-600 inline-flex items-center gap-1.5">
-                <BookOpen className="w-4 h-4 text-amber-700" aria-hidden="true" />
-                <span>Bacalah, Cara Cepat Belajar Membaca {currentLesson.jilid}</span>
-              </span>
-            </div>
-
-            <div className="flex items-center gap-2">
-              <button
-                type="button"
-                onClick={() => {
-                  playTapNote(1);
-                  setColorSyllables((v) => !v);
-                }}
-                aria-pressed={colorSyllables}
-                className={`inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg border text-xs font-semibold transition-colors cursor-pointer ${
-                  colorSyllables
-                    ? 'bg-amber-100 border-amber-300 text-amber-900'
-                    : 'bg-white border-slate-200 text-slate-700'
-                }`}
-              >
-                <Palette className="w-3.5 h-3.5" aria-hidden="true" />
-                <span>{colorSyllables ? 'Warna Suku Kata' : 'Teks Biasa'}</span>
-              </button>
-
-              <button
-                type="button"
-                onClick={handleReadFullPage}
-                className="inline-flex items-center gap-1.5 px-3.5 py-1.5 rounded-lg bg-sky-600 hover:bg-sky-700 text-white text-xs sm:text-sm font-semibold transition-colors cursor-pointer"
-              >
-                <Play className="w-3.5 h-3.5 fill-current" aria-hidden="true" />
-                <span>{isReadingPage ? 'Sedang Membaca...' : 'Baca Semua Baris'}</span>
-              </button>
-            </div>
-          </div>
-
-          {/* Anchor Title (e.g. "dana - dan" underlined) */}
-          <div className="py-6 text-center">
+      {/* Spread Selector Tabs */}
+      <div className="flex flex-wrap items-center gap-1.5 p-1.5 bg-white/90 border border-slate-200 rounded-2xl mb-5">
+        {visibleSpreads.map((sp, idx) => {
+          const isCurrent = idx === spreadIdx;
+          return (
             <button
+              key={sp.id}
               type="button"
-              onClick={() => {
-                playTapNote(2);
-                speakIndonesian(currentLesson.titleAnchor.replace(/-/g, ' '));
-              }}
-              className="inline-block font-display text-3xl sm:text-4xl font-extrabold text-slate-900 underline decoration-2 underline-offset-8 decoration-slate-800 hover:text-sky-700 transition-colors cursor-pointer"
-            >
-              {currentLesson.titleAnchor}
-            </button>
-          </div>
-
-          {/* 3-Column Drill Words Grid (just like the photo!) */}
-          <div className="grid grid-cols-3 gap-2.5 sm:gap-4 max-w-2xl mx-auto mb-8">
-            {currentLesson.drillWords.map((item, idx) => {
-              const isLit = activeDrillIdx === idx;
-              return (
-                <button
-                  key={`${currentLesson.id}-w-${idx}`}
-                  type="button"
-                  onClick={() => handleTapDrillWord(item, idx)}
-                  className={`py-3 px-2 rounded-xl border text-center transition-all cursor-pointer focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-sky-500 ${
-                    isLit
-                      ? 'bg-amber-200 border-amber-400 scale-105 shadow-sm'
-                      : 'bg-white/90 border-amber-200/70 hover:border-sky-400 hover:bg-white'
-                  }`}
-                >
-                  <span className="font-display text-xl sm:text-2xl font-bold tracking-tight">
-                    {colorSyllables
-                      ? item.syllables.map((syl, sIdx) => (
-                          <span
-                            key={sIdx}
-                            className={
-                              sIdx % 2 === 0 ? 'text-slate-900' : 'text-rose-600'
-                            }
-                          >
-                            {syl}
-                          </span>
-                        ))
-                      : item.word}
-                  </span>
-                </button>
-              );
-            })}
-          </div>
-
-          {/* Rhythmic Reading Lines (matching the 6-8 lines below in the photo) */}
-          <div className="space-y-2 max-w-2xl mx-auto">
-            {currentLesson.lines.map((line, idx) => {
-              const isLineActive = activeLineIdx === idx;
-              return (
-                <button
-                  key={`${currentLesson.id}-l-${idx}`}
-                  type="button"
-                  onClick={() => handleTapLine(line, idx)}
-                  className={`w-full text-left px-4 py-3 rounded-xl border transition-all flex items-center justify-between gap-3 cursor-pointer focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-sky-500 ${
-                    isLineActive
-                      ? 'bg-amber-200/90 border-amber-400 text-slate-900 scale-[1.01]'
-                      : 'bg-white/80 border-amber-100 text-slate-900 hover:bg-sky-50/70 hover:border-sky-300'
-                  }`}
-                >
-                  <span className="font-display text-lg sm:text-2xl font-semibold tracking-tight leading-snug">
-                    {line}
-                  </span>
-                  <Volume2
-                    className={`w-4 h-4 shrink-0 ${
-                      isLineActive ? 'text-amber-900' : 'text-slate-400'
-                    }`}
-                    aria-hidden="true"
-                  />
-                </button>
-              );
-            })}
-          </div>
-
-          {/* Bottom Book Navigation & Star Reward */}
-          <div className="flex flex-col sm:flex-row items-center justify-between gap-3 pt-6 mt-6 border-t border-amber-200/80">
-            <div className="flex items-center gap-2">
-              <button
-                type="button"
-                onClick={handlePrevPage}
-                className="inline-flex items-center gap-1 px-3.5 py-2 rounded-xl border border-slate-200 bg-white hover:bg-slate-50 text-slate-700 text-sm font-semibold cursor-pointer"
-              >
-                <ChevronLeft className="w-4 h-4" aria-hidden="true" />
-                <span>Halaman Sebelumnya</span>
-              </button>
-              <button
-                type="button"
-                onClick={handleNextPage}
-                className="inline-flex items-center gap-1 px-3.5 py-2 rounded-xl border border-slate-200 bg-white hover:bg-slate-50 text-slate-700 text-sm font-semibold cursor-pointer"
-              >
-                <span>Halaman Berikutnya</span>
-                <ChevronRight className="w-4 h-4" aria-hidden="true" />
-              </button>
-            </div>
-
-            <button
-              type="button"
-              onClick={handleMarkPageDone}
-              className={`inline-flex items-center gap-2 px-5 py-2.5 rounded-xl font-bold text-sm transition-colors cursor-pointer ${
-                isCompleted
-                  ? 'bg-emerald-100 text-emerald-800 border border-emerald-300'
-                  : 'bg-emerald-600 hover:bg-emerald-700 text-white'
+              onClick={() => handleSelectSpread(idx)}
+              className={`px-3 py-2 rounded-xl text-xs sm:text-sm font-semibold transition-colors whitespace-nowrap shrink-0 cursor-pointer ${
+                isCurrent
+                  ? 'bg-sky-600 text-white shadow-sm'
+                  : 'text-slate-700 hover:bg-sky-50 hover:text-sky-800'
               }`}
             >
-              <CheckCircle2 className="w-4 h-4" aria-hidden="true" />
-              <span>
-                {isCompleted ? 'Halaman Sudah Dibaca' : 'Selesai Baca & Dapat Bintang'}
-              </span>
+              {sp.label}
             </button>
+          );
+        })}
+      </div>
+
+      {/* Open Two-Page Magazine / Book Spread */}
+      <div className="relative rounded-3xl border-4 border-amber-300/90 bg-amber-100/60 p-2 sm:p-3 shadow-md">
+        <div className="grid grid-cols-1 lg:grid-cols-2 rounded-2xl overflow-hidden border border-amber-200 bg-[#FFFCF4] relative">
+          {/* Center Book Spine Shadow */}
+          <div
+            aria-hidden="true"
+            className="hidden lg:block pointer-events-none absolute inset-y-0 left-1/2 -translate-x-1/2 w-8 bg-gradient-to-r from-transparent via-amber-900/10 to-transparent z-10"
+          />
+
+          <div className="border-b lg:border-b-0 lg:border-r border-amber-200/80">
+            {renderSyllablePage(currentSpread.leftPage, 'left')}
           </div>
+
+          <div>{renderSyllablePage(currentSpread.rightPage, 'right')}</div>
         </div>
+      </div>
+
+      {/* Bottom Book Page-Flip Controls */}
+      <div className="flex items-center justify-between gap-3 mt-5">
+        <button
+          type="button"
+          onClick={() =>
+            handleSelectSpread(
+              (spreadIdx - 1 + visibleSpreads.length) % visibleSpreads.length
+            )
+          }
+          className="inline-flex items-center gap-2 px-4 py-2.5 rounded-xl bg-white border border-slate-200 hover:border-sky-400 text-slate-800 text-sm font-semibold transition-colors cursor-pointer"
+        >
+          <ChevronLeft className="w-4 h-4" aria-hidden="true" />
+          <span>Balik Halaman Sebelumnya</span>
+        </button>
+
+        <div className="hidden sm:flex items-center gap-2 text-xs font-semibold text-slate-600">
+          <BookOpen className="w-4 h-4 text-amber-700" aria-hidden="true" />
+          <span className="tabular-nums">
+            Lembar {spreadIdx + 1} dari {visibleSpreads.length} · Jilid {currentSpread.jilid}
+          </span>
+        </div>
+
+        <button
+          type="button"
+          onClick={() =>
+            handleSelectSpread((spreadIdx + 1) % visibleSpreads.length)
+          }
+          className="inline-flex items-center gap-2 px-4 py-2.5 rounded-xl bg-sky-600 hover:bg-sky-700 text-white text-sm font-semibold transition-colors cursor-pointer"
+        >
+          <span>Balik Halaman Berikutnya</span>
+          <ChevronRight className="w-4 h-4" aria-hidden="true" />
+        </button>
       </div>
     </section>
   );

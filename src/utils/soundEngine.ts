@@ -1,9 +1,16 @@
-// Sound & Indonesian Speech Engine for Bacalah Ceria
-// Combines Web Audio API marimba/chime synthesis with Web Speech API (id-ID)
+// Indonesian Child Voice & Sound Engine for Bacalah Ceria
+// Uses server-side Gemini Child TTS (/api/tts) with local WAV caching and
+// seamless Web Speech API child-pitched Indonesian fallback.
 
 let audioCtx: AudioContext | null = null;
 let globalSoundEnabled = true;
 let activeSequenceToken = 0;
+let activeAudioEl: HTMLAudioElement | null = null;
+let activeFetchController: AbortController | null = null;
+let ttsServerAvailable: boolean | null = null;
+
+const clientWavCache = new Map<string, string>();
+const BRIGHT_KIDS_PENTATONIC = [659.25, 783.99, 880.0, 1046.5, 1174.66, 1318.51];
 
 function getAudioContext(): AudioContext | null {
   if (typeof window === 'undefined') return null;
@@ -23,9 +30,8 @@ function getAudioContext(): AudioContext | null {
 
 export function setSoundEnabled(enabled: boolean): void {
   globalSoundEnabled = enabled;
-  if (!enabled && typeof window !== 'undefined' && 'speechSynthesis' in window) {
-    window.speechSynthesis.cancel();
-    activeSequenceToken++;
+  if (!enabled) {
+    cancelAllSpeech();
   }
 }
 
@@ -35,67 +41,98 @@ export function isSoundEnabled(): boolean {
 
 export function cancelAllSpeech(): void {
   activeSequenceToken++;
+  if (activeFetchController) {
+    activeFetchController.abort();
+    activeFetchController = null;
+  }
+  if (activeAudioEl) {
+    activeAudioEl.pause();
+    activeAudioEl.currentTime = 0;
+    activeAudioEl = null;
+  }
   if (typeof window !== 'undefined' && 'speechSynthesis' in window) {
     window.speechSynthesis.cancel();
   }
 }
 
-// Indonesian letter phonetic names so TTS speaks natural Indonesian alphabet sounds
+// Indonesian letter phonetic names so TTS speaks authentic Indonesian alphabet sounds
 const INDONESIAN_LETTER_SPEECH: Record<string, string> = {
-  A: 'a',
-  B: 'be',
-  C: 'ce',
-  D: 'de',
-  E: 'e',
-  F: 'ef',
-  G: 'ge',
+  A: 'aa',
+  B: 'bé',
+  C: 'cé',
+  D: 'dé',
+  E: 'é',
+  F: 'éf',
+  G: 'gé',
   H: 'ha',
-  I: 'i',
-  J: 'je',
+  I: 'ii',
+  J: 'jé',
   K: 'ka',
-  L: 'el',
-  M: 'em',
-  N: 'en',
-  O: 'o',
-  P: 'pe',
+  L: 'él',
+  M: 'ém',
+  N: 'én',
+  O: 'oo',
+  P: 'pé',
   Q: 'ki',
-  R: 'er',
-  S: 'es',
-  T: 'te',
-  U: 'u',
-  V: 'fe',
-  W: 'we',
-  X: 'eks',
-  Y: 'ye',
-  Z: 'zet',
+  R: 'ér',
+  S: 'és',
+  T: 'té',
+  U: 'uu',
+  V: 'fé',
+  W: 'wé',
+  X: 'éks',
+  Y: 'yé',
+  Z: 'zét',
 };
 
 export function getIndonesianLetterSpeech(letter: string): string {
   return INDONESIAN_LETTER_SPEECH[letter.toUpperCase()] || letter.toLowerCase();
 }
 
-const BRIGHT_KIDS_PENTATONIC = [659.25, 783.99, 880.0, 1046.5, 1174.66, 1318.51];
+// Prevent short open syllables like "be", "ce", "de", "nge", "nye" from being pronounced in English
+function toIndonesianPhoneticText(rawText: string): string {
+  const trimmed = rawText.trim().toLowerCase();
+  return trimmed.replace(/\b(ng|ny|[bcdfghjklmnpqrstvwxyz])e\b/g, '$1é');
+}
 
-function getPreferredIndonesianVoice(): SpeechSynthesisVoice | null {
+export function getPreferredIndonesianVoice(): SpeechSynthesisVoice | null {
   if (typeof window === 'undefined' || !('speechSynthesis' in window)) return null;
   const voices = window.speechSynthesis.getVoices();
   if (!voices.length) return null;
 
-  const idVoices = voices.filter((v) => v.lang.toLowerCase().startsWith('id'));
-  if (idVoices.length > 0) {
-    // Prefer bright female / youthful Indonesian voices when available
-    const preferredNames = ['gadis', 'damayanti', 'google bahasa indonesia', 'female'];
-    const brightVoice = idVoices.find((v) =>
-      preferredNames.some((name) => v.name.toLowerCase().includes(name))
-    );
-    if (brightVoice) return brightVoice;
+  const isIndoLang = (lang: string) => {
+    const l = lang.toLowerCase().replace('_', '-');
+    return l === 'id-id' || l === 'id' || l.startsWith('id-');
+  };
 
-    const exactId = idVoices.find((v) => v.lang.toLowerCase() === 'id-id');
-    return exactId || idVoices[0];
+  const idVoices = voices.filter(
+    (v) => isIndoLang(v.lang) || v.name.toLowerCase().includes('indonesia')
+  );
+
+  if (idVoices.length > 0) {
+    const preferredOrder = [
+      'gadis',
+      'damayanti',
+      'google bahasa indonesia',
+      'indonesia',
+    ];
+    for (const keyword of preferredOrder) {
+      const match = idVoices.find((v) => v.name.toLowerCase().includes(keyword));
+      if (match) return match;
+    }
+    return idVoices[0];
   }
 
-  const malayFallback = voices.find((v) => v.lang.toLowerCase().startsWith('ms'));
-  return malayFallback || null;
+  const msVoice = voices.find((v) => v.lang.toLowerCase().startsWith('ms'));
+  return msVoice || null;
+}
+
+export function getIndonesianVoiceLabel(): string {
+  if (ttsServerAvailable !== false) {
+    return 'Suara Anak Ceria (Indonesia)';
+  }
+  const voice = getPreferredIndonesianVoice();
+  return voice ? `${voice.name} (Anak)` : 'Suara Anak Indonesia (id-ID)';
 }
 
 export function playTapNote(index = 0): void {
@@ -112,7 +149,7 @@ export function playTapNote(index = 0): void {
   osc.frequency.setValueAtTime(freq, now);
 
   gain.gain.setValueAtTime(0.001, now);
-  gain.gain.exponentialRampToValueAtTime(0.16, now + 0.015);
+  gain.gain.exponentialRampToValueAtTime(0.15, now + 0.015);
   gain.gain.exponentialRampToValueAtTime(0.001, now + 0.24);
 
   osc.connect(gain);
@@ -215,6 +252,122 @@ export function playTryAgainSound(): void {
   osc.stop(now + 0.24);
 }
 
+function speakBrowserFallback(
+  cleanText: string,
+  rate: number,
+  token: number,
+  onStart?: () => void,
+  onEnd?: () => void
+): void {
+  if (token !== activeSequenceToken || typeof window === 'undefined' || !('speechSynthesis' in window)) {
+    onEnd?.();
+    return;
+  }
+
+  window.speechSynthesis.cancel();
+  const utterance = new SpeechSynthesisUtterance(cleanText);
+  utterance.lang = 'id-ID';
+  utterance.rate = Math.min(rate, 0.78);
+  // High cheerful childlike pitch for browser fallback
+  utterance.pitch = 1.85;
+  utterance.volume = 1;
+
+  const voice = getPreferredIndonesianVoice();
+  if (voice) {
+    utterance.voice = voice;
+    utterance.lang = voice.lang || 'id-ID';
+  }
+
+  let finished = false;
+  const finish = () => {
+    if (finished) return;
+    finished = true;
+    onEnd?.();
+  };
+
+  utterance.onstart = () => onStart?.();
+  utterance.onend = finish;
+  utterance.onerror = finish;
+
+  onStart?.();
+  window.speechSynthesis.speak(utterance);
+  window.setTimeout(finish, Math.max(2000, cleanText.length * 220));
+}
+
+async function fetchChildVoiceWav(
+  cleanText: string,
+  speed: 'slow' | 'normal',
+  signal: AbortSignal
+): Promise<string | null> {
+  if (ttsServerAvailable === false) return null;
+
+  const key = `${speed}::${cleanText}`;
+  const cached = clientWavCache.get(key);
+  if (cached) return cached;
+
+  try {
+    const res = await fetch('/api/tts', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ text: cleanText, speed }),
+      signal,
+    });
+
+    if (!res.ok) {
+      if (res.status === 404 || res.status === 503) {
+        ttsServerAvailable = false;
+      }
+      return null;
+    }
+
+    const data = (await res.json()) as { audioBase64?: string; mimeType?: string };
+    if (!data.audioBase64) return null;
+
+    ttsServerAvailable = true;
+    const dataUrl = `data:${data.mimeType || 'audio/wav'};base64,${data.audioBase64}`;
+    if (clientWavCache.size > 150) {
+      const oldest = clientWavCache.keys().next().value;
+      if (oldest) clientWavCache.delete(oldest);
+    }
+    clientWavCache.set(key, dataUrl);
+    return dataUrl;
+  } catch {
+    return null;
+  }
+}
+
+function playWavDataUrl(
+  dataUrl: string,
+  token: number,
+  onStart?: () => void,
+  onEnd?: () => void
+): Promise<void> {
+  return new Promise((resolve) => {
+    if (token !== activeSequenceToken) {
+      onEnd?.();
+      resolve();
+      return;
+    }
+
+    const audio = new Audio(dataUrl);
+    activeAudioEl = audio;
+    let done = false;
+
+    const finish = () => {
+      if (done) return;
+      done = true;
+      if (activeAudioEl === audio) activeAudioEl = null;
+      onEnd?.();
+      resolve();
+    };
+
+    audio.onended = finish;
+    audio.onerror = finish;
+    onStart?.();
+    audio.play().catch(finish);
+  });
+}
+
 export interface SpeakOptions {
   rate?: number;
   pitch?: number;
@@ -228,73 +381,56 @@ export function speakIndonesian(text: string, options: SpeakOptions = {}): void 
     return;
   }
 
-  if (typeof window === 'undefined' || !('speechSynthesis' in window)) {
-    options.onEnd?.();
+  cancelAllSpeech();
+  const token = activeSequenceToken;
+  const cleanText = toIndonesianPhoneticText(text);
+  const speed: 'slow' | 'normal' = (options.rate ?? 0.72) <= 0.68 ? 'slow' : 'normal';
+
+  const controller = new AbortController();
+  activeFetchController = controller;
+
+  fetchChildVoiceWav(cleanText, speed, controller.signal).then((wavUrl) => {
+    if (token !== activeSequenceToken) return;
+    if (wavUrl) {
+      playWavDataUrl(wavUrl, token, options.onStart, options.onEnd);
+    } else {
+      speakBrowserFallback(
+        cleanText,
+        options.rate ?? 0.72,
+        token,
+        options.onStart,
+        options.onEnd
+      );
+    }
+  });
+}
+
+async function speakPromise(
+  text: string,
+  rate: number,
+  token: number
+): Promise<void> {
+  if (token !== activeSequenceToken) return;
+  if (!globalSoundEnabled) {
+    await new Promise((r) => window.setTimeout(r, 520));
     return;
   }
 
-  window.speechSynthesis.cancel();
+  const cleanText = toIndonesianPhoneticText(text);
+  const speed: 'slow' | 'normal' = rate <= 0.68 ? 'slow' : 'normal';
+  const controller = new AbortController();
+  activeFetchController = controller;
 
-  const utterance = new SpeechSynthesisUtterance(text);
-  utterance.lang = 'id-ID';
-  utterance.rate = Math.min(options.rate ?? 0.62, 0.66);
-  utterance.pitch = options.pitch ?? 1.42;
-  utterance.volume = 1;
+  const wavUrl = await fetchChildVoiceWav(cleanText, speed, controller.signal);
+  if (token !== activeSequenceToken) return;
 
-  const voice = getPreferredIndonesianVoice();
-  if (voice) {
-    utterance.voice = voice;
+  if (wavUrl) {
+    await playWavDataUrl(wavUrl, token);
+  } else {
+    await new Promise<void>((resolve) => {
+      speakBrowserFallback(cleanText, rate, token, undefined, resolve);
+    });
   }
-
-  let finished = false;
-  const finish = () => {
-    if (finished) return;
-    finished = true;
-    options.onEnd?.();
-  };
-
-  utterance.onstart = () => options.onStart?.();
-  utterance.onend = finish;
-  utterance.onerror = finish;
-
-  options.onStart?.();
-  window.speechSynthesis.speak(utterance);
-
-  // Safety timeout adjusted for slower speaking speed
-  window.setTimeout(finish, Math.max(2200, text.length * 220));
-}
-
-function speakPromise(text: string, rate: number, token: number): Promise<void> {
-  return new Promise((resolve) => {
-    if (token !== activeSequenceToken) {
-      resolve();
-      return;
-    }
-    if (!globalSoundEnabled || typeof window === 'undefined' || !('speechSynthesis' in window)) {
-      window.setTimeout(resolve, 680);
-      return;
-    }
-
-    const utterance = new SpeechSynthesisUtterance(text);
-    utterance.lang = 'id-ID';
-    utterance.rate = Math.min(rate, 0.65);
-    utterance.pitch = 1.44;
-    utterance.volume = 1;
-    const voice = getPreferredIndonesianVoice();
-    if (voice) utterance.voice = voice;
-
-    let done = false;
-    const finish = () => {
-      if (done) return;
-      done = true;
-      resolve();
-    };
-
-    utterance.onend = finish;
-    utterance.onerror = finish;
-    window.speechSynthesis.speak(utterance);
-    window.setTimeout(finish, Math.max(1300, text.length * 240));
-  });
 }
 
 export async function speakSyllablesSequence(
@@ -303,25 +439,21 @@ export async function speakSyllablesSequence(
   onSyllableIndex: (idx: number | null) => void,
   onComplete?: () => void
 ): Promise<void> {
-  activeSequenceToken++;
+  cancelAllSpeech();
   const token = activeSequenceToken;
-
-  if (typeof window !== 'undefined' && 'speechSynthesis' in window) {
-    window.speechSynthesis.cancel();
-  }
 
   for (let i = 0; i < syllables.length; i++) {
     if (token !== activeSequenceToken) return;
     onSyllableIndex(i);
     playTapNote(i);
-    await speakPromise(syllables[i].toLowerCase(), 0.52, token);
-    await new Promise((r) => window.setTimeout(r, 260));
+    await speakPromise(syllables[i].toLowerCase(), 0.64, token);
+    await new Promise((r) => window.setTimeout(r, 200));
   }
 
   if (token !== activeSequenceToken) return;
-  onSyllableIndex(-1); // indicates full word highlight
+  onSyllableIndex(-1);
   playBlendSound();
-  await speakPromise(fullWord.toLowerCase(), 0.62, token);
+  await speakPromise(fullWord.toLowerCase(), 0.72, token);
 
   if (token !== activeSequenceToken) return;
   onSyllableIndex(null);

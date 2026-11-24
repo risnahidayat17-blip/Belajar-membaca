@@ -6,10 +6,13 @@ let audioCtx: AudioContext | null = null;
 let globalSoundEnabled = true;
 let activeSequenceToken = 0;
 let activeAudioEl: HTMLAudioElement | null = null;
+let activeBufferSource: AudioBufferSourceNode | null = null;
 let activeFetchController: AbortController | null = null;
 let ttsServerAvailable: boolean | null = null;
+let ttsCooldownUntil = 0;
 
-const clientWavCache = new Map<string, string>();
+const clientBase64Cache = new Map<string, string>();
+const clientBufferCache = new Map<string, AudioBuffer>();
 const BRIGHT_KIDS_PENTATONIC = [659.25, 783.99, 880.0, 1046.5, 1174.66, 1318.51];
 
 function getAudioContext(): AudioContext | null {
@@ -44,6 +47,15 @@ export function cancelAllSpeech(): void {
   if (activeFetchController) {
     activeFetchController.abort();
     activeFetchController = null;
+  }
+  if (activeBufferSource) {
+    try {
+      activeBufferSource.onended = null;
+      activeBufferSource.stop();
+    } catch {
+      // Ignore already stopped source
+    }
+    activeBufferSource = null;
   }
   if (activeAudioEl) {
     activeAudioEl.pause();
@@ -110,17 +122,21 @@ export function getPreferredIndonesianVoice(): SpeechSynthesisVoice | null {
   );
 
   if (idVoices.length > 0) {
+    // Local OS voices honor utterance.pitch (e.g. 1.9 for childlike tone),
+    // whereas cloud "Google Bahasa Indonesia" ignores pitch completely.
+    const localIdVoices = idVoices.filter((v) => v.localService);
+    const pool = localIdVoices.length > 0 ? localIdVoices : idVoices;
     const preferredOrder = [
       'gadis',
       'damayanti',
-      'google bahasa indonesia',
       'indonesia',
+      'google bahasa indonesia',
     ];
     for (const keyword of preferredOrder) {
-      const match = idVoices.find((v) => v.name.toLowerCase().includes(keyword));
+      const match = pool.find((v) => v.name.toLowerCase().includes(keyword));
       if (match) return match;
     }
-    return idVoices[0];
+    return pool[0];
   }
 
   const msVoice = voices.find((v) => v.lang.toLowerCase().startsWith('ms'));
@@ -269,7 +285,7 @@ function speakBrowserFallback(
   utterance.lang = 'id-ID';
   utterance.rate = Math.min(rate, 0.78);
   // High cheerful childlike pitch for browser fallback
-  utterance.pitch = 1.85;
+  utterance.pitch = 1.95;
   utterance.volume = 1;
 
   const voice = getPreferredIndonesianVoice();
@@ -294,16 +310,28 @@ function speakBrowserFallback(
   window.setTimeout(finish, Math.max(2000, cleanText.length * 220));
 }
 
-async function fetchChildVoiceWav(
+function base64ToArrayBuffer(base64: string): ArrayBuffer {
+  const binary = window.atob(base64);
+  const len = binary.length;
+  const bytes = new Uint8Array(len);
+  for (let i = 0; i < len; i++) {
+    bytes[i] = binary.charCodeAt(i);
+  }
+  return bytes.buffer;
+}
+
+async function fetchChildVoiceBase64(
   cleanText: string,
   speed: 'slow' | 'normal',
   signal: AbortSignal
-): Promise<string | null> {
+): Promise<{ key: string; base64: string } | null> {
   if (ttsServerAvailable === false) return null;
 
   const key = `${speed}::${cleanText}`;
-  const cached = clientWavCache.get(key);
-  if (cached) return cached;
+  const cached = clientBase64Cache.get(key);
+  if (cached) return { key, base64: cached };
+
+  if (Date.now() < ttsCooldownUntil) return null;
 
   try {
     const res = await fetch('/api/tts', {
@@ -316,40 +344,99 @@ async function fetchChildVoiceWav(
     if (!res.ok) {
       if (res.status === 404 || res.status === 503) {
         ttsServerAvailable = false;
+      } else if (res.status === 429) {
+        ttsCooldownUntil = Date.now() + 30_000;
       }
       return null;
     }
 
-    const data = (await res.json()) as { audioBase64?: string; mimeType?: string };
+    const data = (await res.json()) as { audioBase64?: string };
     if (!data.audioBase64) return null;
 
     ttsServerAvailable = true;
-    const dataUrl = `data:${data.mimeType || 'audio/wav'};base64,${data.audioBase64}`;
-    if (clientWavCache.size > 150) {
-      const oldest = clientWavCache.keys().next().value;
-      if (oldest) clientWavCache.delete(oldest);
+    if (clientBase64Cache.size > 150) {
+      const oldest = clientBase64Cache.keys().next().value;
+      if (oldest) {
+        clientBase64Cache.delete(oldest);
+        clientBufferCache.delete(oldest);
+      }
     }
-    clientWavCache.set(key, dataUrl);
-    return dataUrl;
+    clientBase64Cache.set(key, data.audioBase64);
+    return { key, base64: data.audioBase64 };
   } catch {
     return null;
   }
 }
 
-function playWavDataUrl(
-  dataUrl: string,
+async function playChildWavAudio(
+  key: string,
+  base64: string,
   token: number,
   onStart?: () => void,
   onEnd?: () => void
 ): Promise<void> {
-  return new Promise((resolve) => {
+  if (token !== activeSequenceToken) {
+    onEnd?.();
+    return;
+  }
+
+  const ctx = getAudioContext();
+  if (ctx) {
+    try {
+      if (ctx.state === 'suspended') {
+        await ctx.resume();
+      }
+      let audioBuffer = clientBufferCache.get(key);
+      if (!audioBuffer) {
+        const arrayBuf = base64ToArrayBuffer(base64);
+        audioBuffer = await ctx.decodeAudioData(arrayBuf);
+        clientBufferCache.set(key, audioBuffer);
+      }
+      if (token !== activeSequenceToken) {
+        onEnd?.();
+        return;
+      }
+
+      await new Promise<void>((resolve) => {
+        const source = ctx.createBufferSource();
+        const gain = ctx.createGain();
+        source.buffer = audioBuffer!;
+        // +2.87 semitone vocal-tract & pitch lift so it sounds unmistakably like a cute 5-year-old child
+        source.playbackRate.value = 1.18;
+        gain.gain.value = 1;
+
+        source.connect(gain);
+        gain.connect(ctx.destination);
+        activeBufferSource = source;
+
+        let done = false;
+        const finish = () => {
+          if (done) return;
+          done = true;
+          if (activeBufferSource === source) activeBufferSource = null;
+          onEnd?.();
+          resolve();
+        };
+
+        source.onended = finish;
+        onStart?.();
+        source.start(0);
+      });
+      return;
+    } catch {
+      // Fall through to HTMLAudioElement fallback below
+    }
+  }
+
+  await new Promise<void>((resolve) => {
     if (token !== activeSequenceToken) {
       onEnd?.();
       resolve();
       return;
     }
 
-    const audio = new Audio(dataUrl);
+    const audio = new Audio(`data:audio/wav;base64,${base64}`);
+    audio.playbackRate = 1.1;
     activeAudioEl = audio;
     let done = false;
 
@@ -381,6 +468,8 @@ export function speakIndonesian(text: string, options: SpeakOptions = {}): void 
     return;
   }
 
+  // Unlock AudioContext synchronously during user gesture before async fetch
+  getAudioContext();
   cancelAllSpeech();
   const token = activeSequenceToken;
   const cleanText = toIndonesianPhoneticText(text);
@@ -389,10 +478,10 @@ export function speakIndonesian(text: string, options: SpeakOptions = {}): void 
   const controller = new AbortController();
   activeFetchController = controller;
 
-  fetchChildVoiceWav(cleanText, speed, controller.signal).then((wavUrl) => {
+  fetchChildVoiceBase64(cleanText, speed, controller.signal).then((result) => {
     if (token !== activeSequenceToken) return;
-    if (wavUrl) {
-      playWavDataUrl(wavUrl, token, options.onStart, options.onEnd);
+    if (result) {
+      playChildWavAudio(result.key, result.base64, token, options.onStart, options.onEnd);
     } else {
       speakBrowserFallback(
         cleanText,
@@ -421,11 +510,11 @@ async function speakPromise(
   const controller = new AbortController();
   activeFetchController = controller;
 
-  const wavUrl = await fetchChildVoiceWav(cleanText, speed, controller.signal);
+  const result = await fetchChildVoiceBase64(cleanText, speed, controller.signal);
   if (token !== activeSequenceToken) return;
 
-  if (wavUrl) {
-    await playWavDataUrl(wavUrl, token);
+  if (result) {
+    await playChildWavAudio(result.key, result.base64, token);
   } else {
     await new Promise<void>((resolve) => {
       speakBrowserFallback(cleanText, rate, token, undefined, resolve);
@@ -439,6 +528,7 @@ export async function speakSyllablesSequence(
   onSyllableIndex: (idx: number | null) => void,
   onComplete?: () => void
 ): Promise<void> {
+  getAudioContext();
   cancelAllSpeech();
   const token = activeSequenceToken;
 
